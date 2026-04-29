@@ -20,21 +20,11 @@ class EmojiBot(commands.Bot):
     async def setup_hook(self):
         # Initialize the database
         database.init_db()
-        # Note: Global sync can take time to propagate. 
-        # Using a manual !sync command is better for testing.
-        print(f"Bot is starting as {self.user}")
+        # Sync slash commands
+        await self.tree.sync()
+        print(f"Synced slash commands for {self.user}")
 
 bot = EmojiBot()
-
-@bot.command()
-@commands.is_owner()
-async def sync(ctx):
-    """Manually sync slash commands to the current guild"""
-    try:
-        synced = await bot.tree.sync()
-        await ctx.send(f"Synced {len(synced)} global commands.")
-    except Exception as e:
-        await ctx.send(f"Failed to sync: {e}")
 
 @bot.tree.command(name="set_emoji", description="Assign an emoji to your username for VC status")
 @app_commands.describe(emoji="The emoji you want to display when in a VC")
