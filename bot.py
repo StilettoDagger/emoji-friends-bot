@@ -111,7 +111,7 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
 @bot.tree.command(name="help", description="Get information about how to use the bot")
 async def help_command(interaction: discord.Interaction):
     help_text = (
-        "**Emoji Status Bot Commands:**\n"
+        "**Bot Commands:**\n"
         "1. `/set_emoji <emoji>` - Set a single emoji (Unicode or Custom) to display in your VC status.\n" \
         "2. `/unset_emoji` - Remove your assigned emoji from your VC status.\n" \
         "3. `/toggle_status [channel]` - Toggle dynamic emoji status for a voice channel (defaults to your current channel).\n"

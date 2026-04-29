@@ -26,7 +26,10 @@ def init_db():
 def set_user_emoji(user_id, emoji):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('INSERT OR REPLACE INTO user_emojis (user_id, emoji) VALUES (?, ?)', (user_id, emoji))
+    if emoji is None:
+        cursor.execute('DELETE FROM user_emojis WHERE user_id = ?', (user_id,))
+    else:
+        cursor.execute('INSERT OR REPLACE INTO user_emojis (user_id, emoji) VALUES (?, ?)', (user_id, emoji))
     conn.commit()
     conn.close()
 
