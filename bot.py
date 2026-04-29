@@ -108,6 +108,57 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
 
     await interaction.response.send_message(f"Dynamic emoji status for {target_channel.name} is **{status_msg}**.", ephemeral=True)
 
+@bot.tree.command(name="whoami", description="Get your current assigned emoji")
+async def whoami(interaction: discord.Interaction):
+    user_id = interaction.user.id
+    emoji = database.get_user_emoji(user_id)
+    await interaction.response.send_message(f"Your assigned emoji is {emoji or 'none'}.", ephemeral=True)
+
+@bot.tree.command(name="vc_who", description="List users in a VC and their assigned emojis")
+async def vc_who(interaction: discord.Interaction, channel: discord.VoiceChannel = None):
+    target_channel = channel or (interaction.user.voice.channel if interaction.user.voice else None)
+
+    if not target_channel:
+        await interaction.response.send_message("Please specify a channel or join one to use this command.", ephemeral=True)
+        return
+
+    users_info = []
+    for member in target_channel.members:
+        emoji = database.get_user_emoji(member.id)
+        users_info.append(f"{member.display_name}: {emoji or 'none'}")
+
+    if users_info:
+        await interaction.response.send_message(f"Users in {target_channel.name}:\n" + "\n".join(users_info), ephemeral=True)
+    else:
+        await interaction.response.send_message(f"No users found in {target_channel.name}.", ephemeral=True)
+
+@bot.tree.command(name="whois", description="List all users with assigned emojis")
+async def whois(interaction: discord.Interaction):
+    users_info = []
+    for user_id in database.get_all_user_ids():
+        emoji = database.get_user_emoji(user_id)
+        if emoji:
+            users_info.append(f"<@{user_id}>: {emoji}")
+
+    if users_info:
+        await interaction.response.send_message("Users with assigned emojis:\n" + "\n".join(users_info), ephemeral=True)
+    else:
+        await interaction.response.send_message("No users have assigned emojis.", ephemeral=True)
+
+@bot.tree.command(name="top_emojis", description="Show the most popular emojis assigned by users")
+async def top_emojis(interaction: discord.Interaction):
+    emoji_counts = {}
+    for user_id in database.get_all_user_ids():
+        emoji = database.get_user_emoji(user_id)
+        if emoji:
+            emoji_counts[emoji] = emoji_counts.get(emoji, 0) + 1
+
+    sorted_emojis = sorted(emoji_counts.items(), key=lambda x: x[1], reverse=True)
+    if sorted_emojis:
+        await interaction.response.send_message("Top assigned emojis:\n" + "\n".join(f"{emoji}: {count}" for emoji, count in sorted_emojis), ephemeral=True)
+    else:
+        await interaction.response.send_message("No emojis have been assigned.", ephemeral=True)
+
 @bot.tree.command(name="help", description="Get information about how to use the bot")
 async def help_command(interaction: discord.Interaction):
     help_text = (
@@ -116,7 +167,11 @@ async def help_command(interaction: discord.Interaction):
         "2. `/unset_emoji` - Remove your assigned emoji from your VC status.\n" \
         "3. `/toggle_status [channel]` - Toggle dynamic emoji status for a voice channel (defaults to your current channel).\n"
         "4. `/status [channel]` - Check if dynamic emoji status is enabled for a voice channel (defaults to your current channel).\n"
-        "5. `/help` - Display this help message.\n\n"
+        "5. `/whoami` - Get your current assigned emoji.\n"
+        "6. `/vc_who [channel]` - List users in a voice channel and their assigned emojis.\n"
+        "7. `/top_emojis` - Show the most popular emojis assigned by users.\n"
+        "8. `/whois` - List all users with assigned emojis.\n"
+        "9. `/help` - Display this help message.\n\n"
         "**Notes:**\n"
         "- You must have 'Manage Channels' permissions to toggle status tracking for a channel.\n"
         "- The bot will automatically update the VC status when users join or leave, as long as it's enabled for that channel."
