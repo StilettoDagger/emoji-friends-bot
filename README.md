@@ -30,6 +30,27 @@ A Discord bot that allows users to assign an emoji to their username. When users
    python bot.py
    ```
 
+## Running with Docker (Recommended for 24/7)
+
+If you want the bot to run in the background and restart automatically:
+
+1. **Install Docker and Docker Compose**.
+2. **Setup .env**: Ensure your `.env` file contains your `DISCORD_TOKEN`.
+3. **Build and Start**:
+   ```bash
+   docker-compose up -d --build
+   ```
+4. **View Logs**:
+   ```bash
+   docker logs -f emoji-friends-bot
+   ```
+5. **Stop**:
+   ```bash
+   docker-compose down
+   ```
+
+The database will be persisted in your project folder as `database.db`.
+
 ## Development Workflow
 
 This project was built with a clean git history:
