@@ -3,18 +3,83 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import discord
 
 # Import the commands from the bot module.
-from bot import set_emoji, unset_emoji, status, toggle_status
+from bot import set_emoji, unset_emoji, status, toggle_status, whoami, whois, vc_who
 
 @pytest.fixture
 def mock_interaction():
     interaction = AsyncMock(spec=discord.Interaction)
     interaction.user = MagicMock()
     interaction.user.id = 12345
+    interaction.user.display_name = "TestUser"
     interaction.user.voice = None
     interaction.user.guild_permissions = MagicMock()
     interaction.response = AsyncMock()
     interaction.response.send_message = AsyncMock()
     return interaction
+
+@pytest.mark.asyncio
+@patch('bot.database')
+async def test_whoami_with_emoji(mock_db, mock_interaction):
+    mock_db.get_user_emoji.return_value = '😀'
+    await whoami.callback(mock_interaction)
+    
+    mock_db.get_user_emoji.assert_called_once_with(12345)
+    mock_interaction.response.send_message.assert_called_once()
+    args, _ = mock_interaction.response.send_message.call_args
+    assert '😀' in args[0]
+
+@pytest.mark.asyncio
+@patch('bot.database')
+async def test_whoami_none(mock_db, mock_interaction):
+    mock_db.get_user_emoji.return_value = None
+    await whoami.callback(mock_interaction)
+    
+    args, _ = mock_interaction.response.send_message.call_args
+    assert 'none' in args[0]
+
+@pytest.mark.asyncio
+@patch('bot.database')
+async def test_whois_list(mock_db, mock_interaction):
+    mock_db.get_all_user_ids.return_value = [123, 456]
+    mock_db.get_user_emoji.side_effect = lambda uid: '😀' if uid == 123 else '😃'
+    
+    await whois.callback(mock_interaction)
+    
+    mock_interaction.response.send_message.assert_called_once()
+    args, _ = mock_interaction.response.send_message.call_args
+    assert '<@123>: 😀' in args[0]
+    assert '<@456>: 😃' in args[0]
+
+@pytest.mark.asyncio
+@patch('bot.database')
+async def test_whois_empty(mock_db, mock_interaction):
+    mock_db.get_all_user_ids.return_value = []
+    await whois.callback(mock_interaction)
+    
+    args, _ = mock_interaction.response.send_message.call_args
+    assert 'No users' in args[0]
+
+@pytest.mark.asyncio
+@patch('bot.database')
+async def test_vc_who_current(mock_db, mock_interaction):
+    # Setup channel with members
+    mock_channel = MagicMock(spec=discord.VoiceChannel)
+    mock_channel.name = "General"
+    member1 = MagicMock(); member1.id = 1; member1.display_name = "User1"
+    member2 = MagicMock(); member2.id = 2; member2.display_name = "User2"
+    mock_channel.members = [member1, member2]
+    
+    mock_interaction.user.voice = MagicMock()
+    mock_interaction.user.voice.channel = mock_channel
+    
+    mock_db.get_user_emoji.side_effect = lambda uid: '😀' if uid == 1 else None
+    
+    await vc_who.callback(mock_interaction, None)
+    
+    mock_interaction.response.send_message.assert_called_once()
+    args, _ = mock_interaction.response.send_message.call_args
+    assert 'User1: 😀' in args[0]
+    assert 'User2: none' in args[0]
 
 @pytest.mark.asyncio
 @patch('bot.database')

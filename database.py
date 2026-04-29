@@ -41,6 +41,14 @@ def get_user_emoji(user_id):
     conn.close()
     return row[0] if row else None
 
+def get_all_user_ids():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id FROM user_emojis')
+    rows = cursor.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
+
 def toggle_vc_status(channel_id):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
