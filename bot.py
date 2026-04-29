@@ -2,6 +2,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import os
+import re
+import emoji
 from dotenv import load_dotenv
 import database
 
@@ -26,13 +28,29 @@ class EmojiBot(commands.Bot):
 
 bot = EmojiBot()
 
+# Custom Discord emoji regex: <:name:id> or <a:name:id>
+CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:\w+:\d+>$")
+
+def is_single_emoji(text: str) -> bool:
+    # Check if it's a single Unicode emoji
+    if emoji.emoji_count(text) == 1 and len(emoji.replace_emoji(text, "")) == 0:
+        return True
+    # Check if it's a single custom Discord emoji
+    if CUSTOM_EMOJI_REGEX.match(text):
+        return True
+    return False
+
 @bot.tree.command(name="set_emoji", description="Assign an emoji to your username for VC status")
-@app_commands.describe(emoji="The emoji you want to display when in a VC")
-async def set_emoji(interaction: discord.Interaction, emoji: str):
-    # Basic validation: check if it's a single emoji or custom emoji string
-    # For now, we'll store whatever string they provide, but ideally we'd validate.
-    database.set_user_emoji(interaction.user.id, emoji)
-    await interaction.response.send_message(f"Your emoji has been set to: {emoji}", ephemeral=True)
+@app_commands.describe(emoji_input="The single emoji you want to display (Unicode or Custom)")
+async def set_emoji(interaction: discord.Interaction, emoji_input: str):
+    emoji_input = emoji_input.strip()
+    
+    if not is_single_emoji(emoji_input):
+        await interaction.response.send_message("Please provide exactly **one** valid emoji (Unicode or Custom).", ephemeral=True)
+        return
+
+    database.set_user_emoji(interaction.user.id, emoji_input)
+    await interaction.response.send_message(f"Your emoji has been set to: {emoji_input}", ephemeral=True)
 
 @bot.tree.command(name="toggle_status", description="Toggle dynamic emoji status for a Voice Channel")
 @app_commands.describe(channel="The voice channel to toggle (defaults to your current channel)")
