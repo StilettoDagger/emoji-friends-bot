@@ -50,6 +50,11 @@ async def set_emoji(interaction: discord.Interaction, emoji_input: str):
         return
 
     database.set_user_emoji(interaction.user.id, emoji_input)
+    
+    # If the user is currently in a voice channel, update that channel's status immediately
+    if interaction.user.voice and interaction.user.voice.channel:
+        await update_vc_status(interaction.user.voice.channel)
+        
     await interaction.response.send_message(f"Your emoji has been set to: {emoji_input}", ephemeral=True)
 
 @bot.tree.command(name="toggle_status", description="Toggle dynamic emoji status for a Voice Channel")
