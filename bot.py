@@ -84,6 +84,45 @@ async def toggle_status(interaction: discord.Interaction, channel: discord.Voice
         
     await interaction.response.send_message(f"Emoji status tracking has been **{status_msg}** for {target_channel.name}.", ephemeral=True)
 
+@bot.tree.command(name="unset_emoji", description="Remove your assigned emoji from your VC status")
+async def unset_emoji(interaction: discord.Interaction):
+    database.set_user_emoji(interaction.user.id, None)
+
+    # If the user is currently in a voice channel, update that channel's status immediately
+    if interaction.user.voice and interaction.user.voice.channel:
+        await update_vc_status(interaction.user.voice.channel)
+
+    await interaction.response.send_message("Your emoji has been removed.", ephemeral=True)
+
+@bot.tree.command(name="status", description="Check if dynamic emoji status is enabled for a Voice Channel")
+@app_commands.describe(channel="The voice channel to check (defaults to your current channel)")
+async def status(interaction: discord.Interaction, channel: discord.VoiceChannel = None):
+    target_channel = channel or (interaction.user.voice.channel if interaction.user.voice else None)
+
+    if not target_channel:
+        await interaction.response.send_message("Please specify a channel or join one to use this command.", ephemeral=True)
+        return
+
+    is_enabled = database.is_vc_enabled(target_channel.id)
+    status_msg = "enabled" if is_enabled else "disabled"
+
+    await interaction.response.send_message(f"Dynamic emoji status for {target_channel.name} is **{status_msg}**.", ephemeral=True)
+
+@bot.tree.command(name="help", description="Get information about how to use the bot")
+async def help_command(interaction: discord.Interaction):
+    help_text = (
+        "**Emoji Status Bot Commands:**\n"
+        "1. `/set_emoji <emoji>` - Set a single emoji (Unicode or Custom) to display in your VC status.\n" \
+        "2. `/unset_emoji` - Remove your assigned emoji from your VC status.\n" \
+        "3. `/toggle_status [channel]` - Toggle dynamic emoji status for a voice channel (defaults to your current channel).\n"
+        "4. `/status [channel]` - Check if dynamic emoji status is enabled for a voice channel (defaults to your current channel).\n"
+        "5. `/help` - Display this help message.\n\n"
+        "**Notes:**\n"
+        "- You must have 'Manage Channels' permissions to toggle status tracking for a channel.\n"
+        "- The bot will automatically update the VC status when users join or leave, as long as it's enabled for that channel."
+    )
+    await interaction.response.send_message(help_text, ephemeral=True)
+
 async def update_vc_status(channel):
     if not database.is_vc_enabled(channel.id):
         return
