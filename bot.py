@@ -34,26 +34,32 @@ async def set_emoji(interaction: discord.Interaction, emoji: str):
     database.set_user_emoji(interaction.user.id, emoji)
     await interaction.response.send_message(f"Your emoji has been set to: {emoji}", ephemeral=True)
 
-@bot.tree.command(name="toggle_status", description="Toggle dynamic emoji status for the current Voice Channel")
-async def toggle_status(interaction: discord.Interaction):
-    if not interaction.user.voice or not interaction.user.voice.channel:
-        await interaction.response.send_message("You must be in a voice channel to use this command.", ephemeral=True)
+@bot.tree.command(name="toggle_status", description="Toggle dynamic emoji status for a Voice Channel")
+@app_commands.describe(channel="The voice channel to toggle (defaults to your current channel)")
+async def toggle_status(interaction: discord.Interaction, channel: discord.VoiceChannel = None):
+    # Use specified channel or the user's current channel
+    target_channel = channel or (interaction.user.voice.channel if interaction.user.voice else None)
+    
+    if not target_channel:
+        await interaction.response.send_message("Please specify a channel or join one to use this command.", ephemeral=True)
         return
 
-    channel = interaction.user.voice.channel
     # Check permissions (Manage Channels or similar)
     if not interaction.user.guild_permissions.manage_channels:
         await interaction.response.send_message("You need 'Manage Channels' permissions to toggle status tracking.", ephemeral=True)
         return
 
-    is_enabled = database.toggle_vc_status(channel.id)
+    is_enabled = database.toggle_vc_status(target_channel.id)
     status_msg = "enabled" if is_enabled else "disabled"
     
     # If disabling, clear the status
     if not is_enabled:
-        await channel.edit(status=None)
+        await target_channel.edit(status=None)
+    else:
+        # If enabling, immediately update it
+        await update_vc_status(target_channel)
         
-    await interaction.response.send_message(f"Emoji status tracking has been **{status_msg}** for {channel.name}.", ephemeral=True)
+    await interaction.response.send_message(f"Emoji status tracking has been **{status_msg}** for {target_channel.name}.", ephemeral=True)
 
 async def update_vc_status(channel):
     if not database.is_vc_enabled(channel.id):
