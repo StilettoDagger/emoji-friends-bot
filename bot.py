@@ -123,7 +123,7 @@ async def whoami(interaction: discord.Interaction):
     user_id = interaction.user.id
     emoji, text = database.get_user_status(user_id)
     if emoji:
-        msg = f"**Your current status is**: {emoji}"
+        msg = f"__**Your current status is**__: {emoji}"
         if text:
             msg += f" {text}"
         await interaction.response.send_message(msg, ephemeral=True)
