@@ -123,12 +123,12 @@ async def whoami(interaction: discord.Interaction):
     user_id = interaction.user.id
     emoji, text = database.get_user_status(user_id)
     if emoji:
-        msg = f"**Your assigned status is**: {emoji}"
+        msg = f"**Your current status is**: {emoji}"
         if text:
             msg += f" {text}"
         await interaction.response.send_message(msg, ephemeral=True)
     else:
-        await interaction.response.send_message("*You have no assigned status.*", ephemeral=True)
+        await interaction.response.send_message("You have no assigned status.", ephemeral=True)
 
 
 @bot.tree.command(name="whois", description="List all users with assigned statuses")
