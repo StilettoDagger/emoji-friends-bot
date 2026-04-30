@@ -28,6 +28,8 @@ class EmojiBot(commands.Bot):
 
 bot = EmojiBot()
 
+active_status_messages = {}
+
 # Custom Discord emoji regex: <:name:id> or <a:name:id>
 CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:\w+:\d+>$")
 
@@ -93,6 +95,7 @@ async def toggle_status(interaction: discord.Interaction, channel: discord.Voice
     # If disabling, clear the status
     if not is_enabled:
         await target_channel.edit(status=None)
+        await update_status_message(target_channel)
     else:
         # If enabling, immediately update it
         await update_vc_status(target_channel)
@@ -108,32 +111,12 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
         await interaction.response.send_message("Please specify a channel or join one to use this command.", ephemeral=True)
         return
 
-    is_enabled = database.is_vc_enabled(target_channel.id)
-    enabled_str = "🟢 **Enabled**" if is_enabled else "🔴 **Disabled**"
-
-    users_info = []
-    for member in target_channel.members:
-        emoji, text = database.get_user_status(member.id)
-        if emoji and text:
-            status_str = f"{emoji} *{text}*"
-        elif emoji:
-            status_str = f"{emoji}"
-        else:
-            status_str = "*(no status)*"
-        users_info.append(f"👤 **{member.display_name}**: {status_str}")
-
-    embed_like_text = (
-        f"🎙️ **{target_channel.name}**\n"
-        f"Tracking: {enabled_str}\n"
-        f"────────────────────\n"
-    )
-
-    if users_info:
-        embed_like_text += "\n".join(users_info)
-    else:
-        embed_like_text += "*No users found in this channel.*"
-
-    await interaction.response.send_message(embed_like_text, ephemeral=False)
+    embed = generate_status_embed(target_channel)
+    await interaction.response.send_message(embed=embed, ephemeral=False)
+    
+    # Track this message for auto-updates
+    message = await interaction.original_response()
+    active_status_messages[target_channel.id] = message
 
 @bot.tree.command(name="whoami", description="Get your current assigned status")
 async def whoami(interaction: discord.Interaction):
@@ -194,7 +177,46 @@ async def help_command(interaction: discord.Interaction):
     )
     await interaction.response.send_message(help_text, ephemeral=True)
 
+def generate_status_embed(channel: discord.VoiceChannel) -> discord.Embed:
+    is_enabled = database.is_vc_enabled(channel.id)
+    enabled_str = "🟢 **Enabled**" if is_enabled else "🔴 **Disabled**"
+
+    users_info = []
+    for member in channel.members:
+        emoji, text = database.get_user_status(member.id)
+        if emoji and text:
+            status_str = f"{emoji} *{text}*"
+        elif emoji:
+            status_str = f"{emoji}"
+        else:
+            status_str = "*(no status)*"
+        users_info.append(f"👤 **{member.display_name}**: {status_str}")
+
+    embed = discord.Embed(title=f"🎙️ {channel.name} Status", color=discord.Color.blue())
+    embed.add_field(name="Tracking", value=enabled_str, inline=False)
+
+    if users_info:
+        embed.description = "\n".join(users_info)
+    else:
+        embed.description = "*No users found in this channel.*"
+
+    return embed
+
+async def update_status_message(channel: discord.VoiceChannel):
+    if channel.id in active_status_messages:
+        try:
+            message = active_status_messages[channel.id]
+            embed = generate_status_embed(channel)
+            await message.edit(embed=embed)
+        except discord.NotFound:
+            del active_status_messages[channel.id]
+        except discord.HTTPException as e:
+            print(f"Failed to update status message for {channel.name}: {e}")
+
 async def update_vc_status(channel):
+    # Update the active embed if one exists
+    await update_status_message(channel)
+
     if not database.is_vc_enabled(channel.id):
         return
 
