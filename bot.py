@@ -133,17 +133,21 @@ async def whoami(interaction: discord.Interaction):
 
 @bot.tree.command(name="whois", description="List all users with assigned statuses")
 async def whois(interaction: discord.Interaction):
+    embed = discord.Embed(title="📋 User Status Directory", color=discord.Color.green())
+    
     users_info = []
     for user_id in database.get_all_user_ids():
         emoji, text = database.get_user_status(user_id)
         if emoji:
-            status_str = f"{emoji} {text}" if text else emoji
-            users_info.append(f"<@{user_id}>: {status_str}")
+            status_str = f"{emoji} *{text}*" if text else emoji
+            users_info.append(f"👤 <@{user_id}>: {status_str}")
 
     if users_info:
-        await interaction.response.send_message("Users with assigned statuses:\n" + "\n".join(users_info), ephemeral=False)
+        embed.description = "\n".join(users_info)
     else:
-        await interaction.response.send_message("No users have assigned statuses.", ephemeral=True)
+        embed.description = "*No users have assigned statuses.*"
+
+    await interaction.response.send_message(embed=embed, ephemeral=False)
 
 @bot.tree.command(name="top_emojis", description="Show the most popular emojis assigned by users")
 async def top_emojis(interaction: discord.Interaction):
