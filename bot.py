@@ -62,8 +62,8 @@ async def set_status(interaction: discord.Interaction, emoji_input: str, text_in
         status_msg += f" {text_input}"
     await interaction.response.send_message(status_msg, ephemeral=True)
 
-@bot.tree.command(name="unset_status", description="Remove your assigned emoji and text from your VC status")
-async def unset_status(interaction: discord.Interaction):
+@bot.tree.command(name="clear_status", description="Remove your assigned emoji and text from your VC status")
+async def clear_status(interaction: discord.Interaction):
     database.set_user_status(interaction.user.id, None, None)
 
     # If the user is currently in a voice channel, update that channel's status immediately
@@ -181,7 +181,7 @@ async def help_command(interaction: discord.Interaction):
     help_text = (
         "**Bot Commands:**\n"
         "1. `/set_status <emoji> [text]` - Set an emoji and optional text to display in your VC status.\n" \
-        "2. `/unset_status` - Remove your assigned status.\n" \
+        "2. `/clear_status` - Remove your assigned status.\n" \
         "3. `/toggle_status [channel]` - Toggle dynamic status for a voice channel (defaults to your current channel).\n"
         "4. `/status [channel]` - Get the tracking status and a list of users in a voice channel.\n"
         "5. `/whoami` - Get your current assigned status.\n"
@@ -198,17 +198,17 @@ async def update_vc_status(channel):
     if not database.is_vc_enabled(channel.id):
         return
 
-    statuses = []
+    emojis = []
     for member in channel.members:
-        emoji, text = database.get_user_status(member.id)
+        emoji, _ = database.get_user_status(member.id)
         if emoji:
-            status_item = f"{emoji} {text}" if text else emoji
-            statuses.append(status_item)
+            emoji_item = f"{emoji}"
+            emojis.append(emoji_item)
     
-    status_str = " ".join(statuses) if statuses else None
+    emoji_str = " ".join(emojis) if emojis else None
     
     try:
-        await channel.edit(status=status_str)
+        await channel.edit(status=emoji_str)
     except discord.Forbidden:
         print(f"Missing permissions to edit status in {channel.name}")
     except discord.HTTPException as e:
