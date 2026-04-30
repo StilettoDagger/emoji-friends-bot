@@ -147,24 +147,6 @@ async def whoami(interaction: discord.Interaction):
     else:
         await interaction.response.send_message("You have no assigned status.", ephemeral=True)
 
-@bot.tree.command(name="vc_who", description="List users in a VC and their assigned statuses")
-async def vc_who(interaction: discord.Interaction, channel: discord.VoiceChannel = None):
-    target_channel = channel or (interaction.user.voice.channel if interaction.user.voice else None)
-
-    if not target_channel:
-        await interaction.response.send_message("Please specify a channel or join one to use this command.", ephemeral=True)
-        return
-
-    users_info = []
-    for member in target_channel.members:
-        emoji, text = database.get_user_status(member.id)
-        status_str = f"{emoji} {text}" if emoji and text else (emoji or "none")
-        users_info.append(f"{member.display_name}: {status_str}")
-
-    if users_info:
-        await interaction.response.send_message(f"Users in {target_channel.name}:\n" + "\n".join(users_info), ephemeral=False)
-    else:
-        await interaction.response.send_message(f"No users found in {target_channel.name}.", ephemeral=True)
 
 @bot.tree.command(name="whois", description="List all users with assigned statuses")
 async def whois(interaction: discord.Interaction):
