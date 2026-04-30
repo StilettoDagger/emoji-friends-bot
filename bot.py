@@ -99,7 +99,7 @@ async def toggle_status(interaction: discord.Interaction, channel: discord.Voice
         
     await interaction.response.send_message(f"Emoji status tracking has been **{status_msg}** for {target_channel.name}.", ephemeral=True)
 
-@bot.tree.command(name="status", description="Check if dynamic emoji status is enabled for a Voice Channel")
+@bot.tree.command(name="status", description="Get the status of a VC and its users")
 @app_commands.describe(channel="The voice channel to check (defaults to your current channel)")
 async def status(interaction: discord.Interaction, channel: discord.VoiceChannel = None):
     target_channel = channel or (interaction.user.voice.channel if interaction.user.voice else None)
@@ -109,9 +109,31 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
         return
 
     is_enabled = database.is_vc_enabled(target_channel.id)
-    status_msg = "enabled" if is_enabled else "disabled"
+    enabled_str = "🟢 **Enabled**" if is_enabled else "🔴 **Disabled**"
 
-    await interaction.response.send_message(f"Dynamic emoji status for {target_channel.name} is **{status_msg}**.", ephemeral=True)
+    users_info = []
+    for member in target_channel.members:
+        emoji, text = database.get_user_status(member.id)
+        if emoji and text:
+            status_str = f"{emoji} *{text}*"
+        elif emoji:
+            status_str = f"{emoji}"
+        else:
+            status_str = "*(no status)*"
+        users_info.append(f"👤 **{member.display_name}**: {status_str}")
+
+    embed_like_text = (
+        f"🎙️ **{target_channel.name}**\n"
+        f"Tracking: {enabled_str}\n"
+        f"────────────────────\n"
+    )
+
+    if users_info:
+        embed_like_text += "\n".join(users_info)
+    else:
+        embed_like_text += "*No users found in this channel.*"
+
+    await interaction.response.send_message(embed_like_text, ephemeral=False)
 
 @bot.tree.command(name="whoami", description="Get your current assigned status")
 async def whoami(interaction: discord.Interaction):
