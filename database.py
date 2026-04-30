@@ -8,9 +8,16 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_emojis (
             user_id INTEGER PRIMARY KEY,
-            emoji TEXT NOT NULL
+            emoji TEXT NOT NULL,
+            text TEXT
         )
     ''')
+
+    # Migration: Add 'text' column if it doesn't exist
+    cursor.execute("PRAGMA table_info(user_emojis)")
+    columns = [column[1] for column in cursor.fetchall()]
+    if 'text' not in columns:
+        cursor.execute("ALTER TABLE user_emojis ADD COLUMN text TEXT")
     
     # VC settings table
     cursor.execute('''
@@ -23,23 +30,23 @@ def init_db():
     conn.commit()
     conn.close()
 
-def set_user_emoji(user_id, emoji):
+def set_user_status(user_id, emoji, text):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     if emoji is None:
         cursor.execute('DELETE FROM user_emojis WHERE user_id = ?', (user_id,))
     else:
-        cursor.execute('INSERT OR REPLACE INTO user_emojis (user_id, emoji) VALUES (?, ?)', (user_id, emoji))
+        cursor.execute('INSERT OR REPLACE INTO user_emojis (user_id, emoji, text) VALUES (?, ?, ?)', (user_id, emoji, text))
     conn.commit()
     conn.close()
 
-def get_user_emoji(user_id):
+def get_user_status(user_id):
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT emoji FROM user_emojis WHERE user_id = ?', (user_id,))
+    cursor.execute('SELECT emoji, text FROM user_emojis WHERE user_id = ?', (user_id,))
     row = cursor.fetchone()
     conn.close()
-    return row[0] if row else None
+    return row if row else (None, None)
 
 def get_all_user_ids():
     conn = sqlite3.connect('database.db')
