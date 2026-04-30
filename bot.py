@@ -128,7 +128,7 @@ async def vc_who(interaction: discord.Interaction, channel: discord.VoiceChannel
         users_info.append(f"{member.display_name}: {emoji or 'none'}")
 
     if users_info:
-        await interaction.response.send_message(f"Users in {target_channel.name}:\n" + "\n".join(users_info), ephemeral=True)
+        await interaction.response.send_message(f"Users in {target_channel.name}:\n" + "\n".join(users_info), ephemeral=False)
     else:
         await interaction.response.send_message(f"No users found in {target_channel.name}.", ephemeral=True)
 
@@ -141,7 +141,7 @@ async def whois(interaction: discord.Interaction):
             users_info.append(f"<@{user_id}>: {emoji}")
 
     if users_info:
-        await interaction.response.send_message("Users with assigned emojis:\n" + "\n".join(users_info), ephemeral=True)
+        await interaction.response.send_message("Users with assigned emojis:\n" + "\n".join(users_info), ephemeral=False)
     else:
         await interaction.response.send_message("No users have assigned emojis.", ephemeral=True)
 
@@ -155,7 +155,7 @@ async def top_emojis(interaction: discord.Interaction):
 
     sorted_emojis = sorted(emoji_counts.items(), key=lambda x: x[1], reverse=True)
     if sorted_emojis:
-        await interaction.response.send_message("Top assigned emojis:\n" + "\n".join(f"{emoji}: {count}" for emoji, count in sorted_emojis), ephemeral=True)
+        await interaction.response.send_message("Top assigned emojis:\n" + "\n".join(f"{emoji}: {count}" for emoji, count in sorted_emojis), ephemeral=False)
     else:
         await interaction.response.send_message("No emojis have been assigned.", ephemeral=True)
 
