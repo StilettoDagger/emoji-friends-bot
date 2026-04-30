@@ -183,12 +183,11 @@ async def help_command(interaction: discord.Interaction):
         "1. `/set_status <emoji> [text]` - Set an emoji and optional text to display in your VC status.\n" \
         "2. `/unset_status` - Remove your assigned status.\n" \
         "3. `/toggle_status [channel]` - Toggle dynamic status for a voice channel (defaults to your current channel).\n"
-        "4. `/status [channel]` - Check if dynamic status is enabled for a voice channel (defaults to your current channel).\n"
+        "4. `/status [channel]` - Get the tracking status and a list of users in a voice channel.\n"
         "5. `/whoami` - Get your current assigned status.\n"
-        "6. `/vc_who [channel]` - List users in a voice channel and their assigned statuses.\n"
-        "7. `/top_emojis` - Show the most popular emojis assigned by users.\n"
-        "8. `/whois` - List all users with assigned statuses.\n"
-        "9. `/help` - Display this help message.\n\n"
+        "6. `/top_emojis` - Show the most popular emojis assigned by users.\n"
+        "7. `/whois` - List all users with assigned statuses.\n"
+        "8. `/help` - Display this help message.\n\n"
         "**Notes:**\n"
         "- You must have 'Manage Channels' permissions to toggle status tracking for a channel.\n"
         "- The bot will automatically update the VC status when users join or leave, as long as it's enabled for that channel."
