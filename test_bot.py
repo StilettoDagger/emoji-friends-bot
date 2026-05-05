@@ -15,6 +15,9 @@ def mock_interaction():
     interaction.user.guild_permissions = MagicMock()
     interaction.response = AsyncMock()
     interaction.response.send_message = AsyncMock()
+    interaction.response.defer = AsyncMock()
+    interaction.followup = AsyncMock()
+    interaction.followup.send = AsyncMock()
     interaction.original_response = AsyncMock()
     return interaction
 
@@ -80,8 +83,9 @@ async def test_status_current_channel(mock_db, mock_interaction):
     
     await status.callback(mock_interaction, None)
     
-    mock_interaction.response.send_message.assert_called_once()
-    _, kwargs = mock_interaction.response.send_message.call_args
+    mock_interaction.response.defer.assert_called_once()
+    mock_interaction.followup.send.assert_called_once()
+    _, kwargs = mock_interaction.followup.send.call_args
     embed = kwargs['embed']
     assert 'User1**: 😀 *Hello*' in embed.description
     assert 'User2**: *(no status)*' in embed.description
@@ -145,8 +149,9 @@ async def test_status_enabled(mock_db, mock_interaction):
     await status.callback(mock_interaction, mock_channel)
     
     mock_db.is_vc_enabled.assert_called_once_with(999)
-    mock_interaction.response.send_message.assert_called_once()
-    _, kwargs = mock_interaction.response.send_message.call_args
+    mock_interaction.response.defer.assert_called_once()
+    mock_interaction.followup.send.assert_called_once()
+    _, kwargs = mock_interaction.followup.send.call_args
     assert '**Enabled**' in kwargs['embed'].fields[0].value
 
 @pytest.mark.asyncio

@@ -57,24 +57,24 @@ async def set_status(interaction: discord.Interaction, emoji_input: str, text_in
 
     database.set_user_status(interaction.user.id, emoji_input, text_input)
     
-    # If the user is currently in a voice channel, update that channel's status immediately
-    if interaction.user.voice and interaction.user.voice.channel:
-        await update_vc_status(interaction.user.voice.channel)
-        
     status_msg = f"Your status has been set to: {emoji_input}"
     if text_input:
         status_msg += f" {text_input}"
     await interaction.response.send_message(status_msg, ephemeral=True)
 
-@bot.tree.command(name="clear_status", description="Remove your assigned emoji and text from your VC status")
-async def clear_status(interaction: discord.Interaction):
-    database.set_user_status(interaction.user.id, None, None)
-
     # If the user is currently in a voice channel, update that channel's status immediately
     if interaction.user.voice and interaction.user.voice.channel:
         await update_vc_status(interaction.user.voice.channel)
 
+@bot.tree.command(name="clear_status", description="Remove your assigned emoji and text from your VC status")
+async def clear_status(interaction: discord.Interaction):
+    database.set_user_status(interaction.user.id, None, None)
+
     await interaction.response.send_message("Your status has been removed.", ephemeral=True)
+
+    # If the user is currently in a voice channel, update that channel's status immediately
+    if interaction.user.voice and interaction.user.voice.channel:
+        await update_vc_status(interaction.user.voice.channel)
 
 @bot.tree.command(name="toggle_status", description="Toggle dynamic emoji status for a Voice Channel")
 @app_commands.describe(channel="The voice channel to toggle (defaults to your current channel)")
@@ -94,6 +94,8 @@ async def toggle_status(interaction: discord.Interaction, channel: discord.Voice
     is_enabled = database.toggle_vc_status(target_channel.id)
     status_msg = "enabled" if is_enabled else "disabled"
     
+    await interaction.response.send_message(f"Emoji status tracking has been **{status_msg}** for {target_channel.name}.", ephemeral=True)
+
     # If disabling, clear the status
     if not is_enabled:
         await target_channel.edit(status=None)
@@ -101,8 +103,6 @@ async def toggle_status(interaction: discord.Interaction, channel: discord.Voice
     else:
         # If enabling, immediately update it
         await update_vc_status(target_channel)
-        
-    await interaction.response.send_message(f"Emoji status tracking has been **{status_msg}** for {target_channel.name}.", ephemeral=True)
 
 @bot.tree.command(name="status", description="Get the status of a VC and its users")
 @app_commands.describe(channel="The voice channel to check (defaults to your current channel)")
@@ -112,6 +112,8 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
     if not target_channel:
         await interaction.response.send_message("Please specify a channel or join one to use this command.", ephemeral=True)
         return
+
+    await interaction.response.defer(ephemeral=False)
 
     embed = generate_status_embed(target_channel)
     
@@ -125,9 +127,9 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
         image_io = await image_renderer.generate_room_image(user_statuses)
         file = discord.File(fp=image_io, filename="room.png")
         embed.set_image(url="attachment://room.png")
-        await interaction.response.send_message(embed=embed, file=file, ephemeral=False)
+        await interaction.followup.send(embed=embed, file=file)
     else:
-        await interaction.response.send_message(embed=embed, ephemeral=False)
+        await interaction.followup.send(embed=embed)
     
     # Track this message for auto-updates
     message = await interaction.original_response()
