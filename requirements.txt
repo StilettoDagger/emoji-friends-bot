@@ -3,3 +3,5 @@ python-dotenv
 emoji
 pytest
 pytest-asyncio
+Pillow
+aiohttp
