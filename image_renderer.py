@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 import asyncio
 import emoji
 import random
+import math
 
 CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:(\w+):(\d+)>$")
 
@@ -37,7 +38,7 @@ async def generate_room_image(user_statuses):
     
     # Load font
     try:
-        font = ImageFont.truetype("assets/Roboto-Regular.ttf", 24)
+        font = ImageFont.truetype("assets/Roboto-Regular.ttf", 32)
     except IOError:
         print("Warning: Font not found, using default.")
         font = ImageFont.load_default()
@@ -92,46 +93,44 @@ async def generate_room_image(user_statuses):
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
             
-            padding = 10
+            padding = 20
             bubble_w = text_w + padding * 2
             bubble_h = text_h + padding * 2
             
             # Position bubble above emoji
             bubble_x = x + 36 - bubble_w // 2
-            bubble_y = y - bubble_h - 15
+            bubble_y = y - bubble_h - 25
             
             # Keep bubble within bounds
-            if bubble_x < 10: bubble_x = 10
-            if bubble_x + bubble_w > width - 10: bubble_x = width - bubble_w - 10
-            if bubble_y < 10: bubble_y = y + 72 + 15  # Draw below if not enough space
+            if bubble_x < 20: bubble_x = 20
+            if bubble_x + bubble_w > width - 20: bubble_x = width - bubble_w - 20
+            if bubble_y < 20: bubble_y = y + 72 + 25  # Draw below if not enough space
             
-            # Draw bubble background (rounded rectangle)
-            bubble_rect = [bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h]
-            draw.rounded_rectangle(bubble_rect, radius=10, fill=(255, 255, 255, 230), outline=(200, 200, 200, 255), width=2)
+            cx = bubble_x + bubble_w / 2
+            cy = bubble_y + bubble_h / 2
             
-            # Draw little triangle pointing to emoji
-            if bubble_y < y: # Above
-                triangle = [
-                    (x + 36 - 10, bubble_y + bubble_h),
-                    (x + 36 + 10, bubble_y + bubble_h),
-                    (x + 36, bubble_y + bubble_h + 15)
-                ]
-            else: # Below
-                triangle = [
-                    (x + 36 - 10, bubble_y),
-                    (x + 36 + 10, bubble_y),
-                    (x + 36, bubble_y - 15)
-                ]
+            # Draw cloud puffs around the text bounds
+            num_puffs = max(6, int((bubble_w + bubble_h) / 25))
+            for j in range(num_puffs):
+                angle = j * (2 * math.pi / num_puffs)
+                # varying puff radius
+                radius = 15 + 10 * abs(math.sin(angle * 2.5))
+                # offset from center
+                px = cx + (bubble_w / 2 - padding / 2) * math.cos(angle)
+                py = cy + (bubble_h / 2 - padding / 2) * math.sin(angle)
                 
-            draw.polygon(triangle, fill=(255, 255, 255, 230))
+                draw.ellipse([px - radius, py - radius, px + radius, py + radius], fill=(255, 255, 255, 240))
+                
+            # Fill the center body
+            draw.ellipse([bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h], fill=(255, 255, 255, 240))
             
-            # Draw outline for the triangle part
-            if bubble_y < y:
-                draw.line([(triangle[0][0], triangle[0][1]), (triangle[2][0], triangle[2][1])], fill=(200, 200, 200, 255), width=2)
-                draw.line([(triangle[1][0], triangle[1][1]), (triangle[2][0], triangle[2][1])], fill=(200, 200, 200, 255), width=2)
-            else:
-                draw.line([(triangle[0][0], triangle[0][1]), (triangle[2][0], triangle[2][1])], fill=(200, 200, 200, 255), width=2)
-                draw.line([(triangle[1][0], triangle[1][1]), (triangle[2][0], triangle[2][1])], fill=(200, 200, 200, 255), width=2)
+            # Draw trail of decreasing circles to the emoji (thought/cloud bubble style)
+            if bubble_y < y: # Cloud is above emoji
+                draw.ellipse([x + 36 - 8, bubble_y + bubble_h, x + 36 + 8, bubble_y + bubble_h + 16], fill=(255, 255, 255, 240))
+                draw.ellipse([x + 36 - 4, bubble_y + bubble_h + 20, x + 36 + 4, bubble_y + bubble_h + 28], fill=(255, 255, 255, 240))
+            else: # Below
+                draw.ellipse([x + 36 - 8, bubble_y - 16, x + 36 + 8, bubble_y], fill=(255, 255, 255, 240))
+                draw.ellipse([x + 36 - 4, bubble_y - 28, x + 36 + 4, bubble_y - 20], fill=(255, 255, 255, 240))
             
             # Draw text
             draw.text((bubble_x + padding, bubble_y + padding), txt, fill=(0, 0, 0, 255), font=font)
