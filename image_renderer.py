@@ -19,7 +19,8 @@ async def fetch_image(session, url):
 
 def get_unicode_hex(char):
     # Twemoji uses hex without leading zeros
-    return "-".join(hex(ord(c))[2:] for c in char)
+    hex_code = "-".join(hex(ord(c))[2:] for c in char)
+    return hex_code.replace("-fe0f", "")
 
 async def generate_room_image(user_statuses):
     """
