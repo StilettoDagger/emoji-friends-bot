@@ -6,6 +6,8 @@ import re
 import emoji
 from dotenv import load_dotenv
 import database
+import io
+import image_renderer
 
 # Load environment variables
 load_dotenv()
@@ -112,7 +114,20 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
         return
 
     embed = generate_status_embed(target_channel)
-    await interaction.response.send_message(embed=embed, ephemeral=False)
+    
+    user_statuses = []
+    for member in target_channel.members:
+        emoji_char, text = database.get_user_status(member.id)
+        if emoji_char:
+            user_statuses.append((emoji_char, text))
+            
+    if user_statuses:
+        image_io = await image_renderer.generate_room_image(user_statuses)
+        file = discord.File(fp=image_io, filename="room.png")
+        embed.set_image(url="attachment://room.png")
+        await interaction.response.send_message(embed=embed, file=file, ephemeral=False)
+    else:
+        await interaction.response.send_message(embed=embed, ephemeral=False)
     
     # Track this message for auto-updates
     message = await interaction.original_response()
@@ -211,7 +226,20 @@ async def update_status_message(channel: discord.VoiceChannel):
         try:
             message = active_status_messages[channel.id]
             embed = generate_status_embed(channel)
-            await message.edit(embed=embed)
+            
+            user_statuses = []
+            for member in channel.members:
+                emoji_char, text = database.get_user_status(member.id)
+                if emoji_char:
+                    user_statuses.append((emoji_char, text))
+                    
+            if user_statuses:
+                image_io = await image_renderer.generate_room_image(user_statuses)
+                file = discord.File(fp=image_io, filename="room.png")
+                embed.set_image(url="attachment://room.png")
+                await message.edit(embed=embed, attachments=[file])
+            else:
+                await message.edit(embed=embed, attachments=[])
         except discord.NotFound:
             del active_status_messages[channel.id]
         except discord.HTTPException as e:
