@@ -9,11 +9,17 @@ import math
 
 CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:(\w+):(\d+)>$")
 
+IMAGE_CACHE = {}
+
 async def fetch_image(session, url):
+    if url in IMAGE_CACHE:
+        return IMAGE_CACHE[url]
     try:
         async with session.get(url) as response:
             if response.status == 200:
-                return await response.read()
+                data = await response.read()
+                IMAGE_CACHE[url] = data
+                return data
     except Exception as e:
         print(f"Error fetching image from {url}: {e}")
     return None
@@ -23,9 +29,11 @@ def get_unicode_hex(char):
     hex_code = "-".join(hex(ord(c))[2:] for c in char)
     return hex_code.replace("-fe0f", "")
 
+USER_POSITIONS = {}
+
 async def generate_room_image(user_statuses):
     """
-    user_statuses: list of tuples (emoji_str, text_str)
+    user_statuses: list of tuples (user_id, emoji_str, text_str)
     """
     # Load background
     try:
@@ -45,7 +53,7 @@ async def generate_room_image(user_statuses):
 
     async with aiohttp.ClientSession() as session:
         tasks = []
-        for emj, txt in user_statuses:
+        for uid, emj, txt in user_statuses:
             match = CUSTOM_EMOJI_REGEX.match(emj)
             if match:
                 emoji_id = match.group(2)
@@ -65,7 +73,7 @@ async def generate_room_image(user_statuses):
     min_x, max_x = int(width * 0.2), int(width * 0.8)
     min_y, max_y = int(height * 0.5), int(height * 0.8)
     
-    for i, (emj_data, (emj, txt)) in enumerate(zip(emoji_images_data, user_statuses)):
+    for i, (emj_data, (user_id, emj, txt)) in enumerate(zip(emoji_images_data, user_statuses)):
         if not emj_data:
             print(f"Skipping emoji {emj} as image data was not downloaded.")
             continue
@@ -79,9 +87,19 @@ async def generate_room_image(user_statuses):
             continue
             
         # Determine position
-        # Simple random placement for now
-        x = random.randint(min_x, max_x)
-        y = random.randint(min_y, max_y)
+        if user_id in USER_POSITIONS:
+            x, y = USER_POSITIONS[user_id]
+            # Drift randomly by up to 30 pixels in any direction
+            x += random.randint(-30, 30)
+            y += random.randint(-30, 30)
+            # Clamp to bounds
+            x = max(min_x, min(x, max_x))
+            y = max(min_y, min(y, max_y))
+            USER_POSITIONS[user_id] = (x, y)
+        else:
+            x = random.randint(min_x, max_x)
+            y = random.randint(min_y, max_y)
+            USER_POSITIONS[user_id] = (x, y)
         
         # Paste emoji using the emoji image itself as the alpha mask
         bg.paste(emj_img, (x, y), emj_img)

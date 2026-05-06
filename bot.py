@@ -1,6 +1,6 @@
 import discord
 from discord import app_commands
-from discord.ext import commands
+from discord.ext import commands, tasks
 import os
 import re
 import emoji
@@ -27,6 +27,23 @@ class EmojiBot(commands.Bot):
         # Sync slash commands
         await self.tree.sync()
         print(f"Synced slash commands for {self.user}")
+        self.status_update_loop.start()
+
+    @tasks.loop(seconds=5)
+    async def status_update_loop(self):
+        for channel_id in list(active_status_messages.keys()):
+            channel = self.get_channel(channel_id)
+            if channel:
+                await update_status_message(channel)
+            else:
+                try:
+                    del active_status_messages[channel_id]
+                except KeyError:
+                    pass
+
+    @status_update_loop.before_loop
+    async def before_status_update_loop(self):
+        await self.wait_until_ready()
 
 bot = EmojiBot()
 
@@ -121,7 +138,7 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
     for member in target_channel.members:
         emoji_char, text = database.get_user_status(member.id)
         if emoji_char:
-            user_statuses.append((emoji_char, text))
+            user_statuses.append((member.id, emoji_char, text))
             
     if user_statuses:
         image_io = await image_renderer.generate_room_image(user_statuses)
@@ -233,7 +250,7 @@ async def update_status_message(channel: discord.VoiceChannel):
             for member in channel.members:
                 emoji_char, text = database.get_user_status(member.id)
                 if emoji_char:
-                    user_statuses.append((emoji_char, text))
+                    user_statuses.append((member.id, emoji_char, text))
                     
             if user_statuses:
                 image_io = await image_renderer.generate_room_image(user_statuses)
