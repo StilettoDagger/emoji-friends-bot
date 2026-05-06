@@ -1,13 +1,23 @@
 # Emoji Friends Discord Bot
 
-A Discord bot that allows users to assign an emoji to their username. When users join a Voice Channel with "emoji status" enabled, their assigned emoji is automatically added to the channel's status.
+A Discord bot that allows users to assign an emoji and a custom text status to their username. When users join a Voice Channel with "emoji status" enabled, the bot dynamically generates and updates a Tamagotchi-inspired "virtual room" image showing all users' emojis and text bubbles!
 
 ## Features
 
-- `/set_emoji <emoji>`: Assign your personal emoji.
-- `/toggle_status`: Enable or disable emoji status tracking for the voice channel you are currently in.
-- **Dynamic Updates**: Statuses update in real-time as users join or leave the VC.
+- **Tamagotchi-Style Virtual Environment**: Generates a composite, retro-inspired virtual room image of all users in a VC, rendering their assigned Unicode or Custom Discord emojis.
+- **Dynamic Teleportation Updates**: The bot automatically refreshes the virtual room image every 10 seconds, causing user emojis to teleport around the room, keeping the environment feeling alive.
+- **Text Speech Bubbles**: Users can set an optional text status that renders as a speech bubble above their emoji in the virtual room.
+- **Performance Optimized**: Uses in-memory caching to prevent redundant downloading of emoji images from Twemoji or Discord CDNs.
 - **Persistence**: Remembers user emojis and channel settings across restarts using SQLite.
+
+### Slash Commands
+- `/set_status <emoji> [text]`: Assign an emoji and optional text.
+- `/clear_status`: Remove your assigned status.
+- `/status [channel]`: Generates and displays the virtual room image for the VC.
+- `/toggle_status [channel]`: Enable or disable dynamic status tracking for a voice channel.
+- `/whoami`: Get your assigned emoji and text.
+- `/whois <user>`: Get a user's assigned emoji and text.
+- `/top_emojis`: Show the top 10 most used emojis by users in the server.
 
 ## Setup Instructions
 
