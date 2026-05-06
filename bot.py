@@ -29,7 +29,7 @@ class EmojiBot(commands.Bot):
         print(f"Synced slash commands for {self.user}")
         self.status_update_loop.start()
 
-    @tasks.loop(seconds=5)
+    @tasks.loop(seconds=10)
     async def status_update_loop(self):
         for channel_id in list(active_status_messages.keys()):
             channel = self.get_channel(channel_id)

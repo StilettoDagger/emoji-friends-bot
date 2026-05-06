@@ -29,8 +29,6 @@ def get_unicode_hex(char):
     hex_code = "-".join(hex(ord(c))[2:] for c in char)
     return hex_code.replace("-fe0f", "")
 
-USER_POSITIONS = {}
-
 async def generate_room_image(user_statuses):
     """
     user_statuses: list of tuples (user_id, emoji_str, text_str)
@@ -87,19 +85,9 @@ async def generate_room_image(user_statuses):
             continue
             
         # Determine position
-        if user_id in USER_POSITIONS:
-            x, y = USER_POSITIONS[user_id]
-            # Drift randomly by up to 30 pixels in any direction
-            x += random.randint(-30, 30)
-            y += random.randint(-30, 30)
-            # Clamp to bounds
-            x = max(min_x, min(x, max_x))
-            y = max(min_y, min(y, max_y))
-            USER_POSITIONS[user_id] = (x, y)
-        else:
-            x = random.randint(min_x, max_x)
-            y = random.randint(min_y, max_y)
-            USER_POSITIONS[user_id] = (x, y)
+        # Teleport to random positions each frame
+        x = random.randint(min_x, max_x)
+        y = random.randint(min_y, max_y)
         
         # Paste emoji using the emoji image itself as the alpha mask
         bg.paste(emj_img, (x, y), emj_img)
