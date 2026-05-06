@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import database
 import io
 import image_renderer
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -142,15 +143,20 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
             
     if user_statuses:
         image_io = await image_renderer.generate_room_image(user_statuses)
-        file = discord.File(fp=image_io, filename="room.png")
-        embed.set_image(url="attachment://room.png")
+        filename = f"room_{uuid.uuid4().hex[:8]}.png"
+        file = discord.File(fp=image_io, filename=filename)
+        embed.set_image(url=f"attachment://{filename}")
         await interaction.followup.send(embed=embed, file=file)
     else:
         await interaction.followup.send(embed=embed)
     
     # Track this message for auto-updates
-    message = await interaction.original_response()
-    active_status_messages[target_channel.id] = message
+    interaction_message = await interaction.original_response()
+    try:
+        message = await interaction.channel.fetch_message(interaction_message.id)
+        active_status_messages[target_channel.id] = message
+    except discord.HTTPException:
+        active_status_messages[target_channel.id] = interaction_message
 
 @bot.tree.command(name="whoami", description="Get your current assigned status")
 async def whoami(interaction: discord.Interaction):
@@ -254,8 +260,9 @@ async def update_status_message(channel: discord.VoiceChannel):
                     
             if user_statuses:
                 image_io = await image_renderer.generate_room_image(user_statuses)
-                file = discord.File(fp=image_io, filename="room.png")
-                embed.set_image(url="attachment://room.png")
+                filename = f"room_{uuid.uuid4().hex[:8]}.png"
+                file = discord.File(fp=image_io, filename=filename)
+                embed.set_image(url=f"attachment://{filename}")
                 await message.edit(embed=embed, attachments=[file])
             else:
                 await message.edit(embed=embed, attachments=[])
