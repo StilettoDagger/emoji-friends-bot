@@ -20,14 +20,21 @@ async def fetch_image(session, url):
                 data = await response.read()
                 IMAGE_CACHE[url] = data
                 return data
+            else:
+                # Cache failures to prevent repeated 404s
+                IMAGE_CACHE[url] = None
+                return None
     except Exception as e:
         print(f"Error fetching image from {url}: {e}")
+        IMAGE_CACHE[url] = None
     return None
 
 def get_unicode_hex(char):
-    # Twemoji uses hex without leading zeros
-    hex_code = "-".join(hex(ord(c))[2:] for c in char)
-    return hex_code.replace("-fe0f", "")
+    h_raw = "-".join(hex(ord(c))[2:] for c in char)
+    h_stripped = h_raw.replace("-fe0f", "")
+    h_appended = h_stripped + "-fe0f"
+    # Return unique variants (try raw first, then stripped, then appended)
+    return list(dict.fromkeys([h_raw, h_stripped, h_appended]))
 
 async def generate_room_image(user_statuses):
     """
@@ -44,7 +51,7 @@ async def generate_room_image(user_statuses):
     
     # Load font
     try:
-        font = ImageFont.truetype("assets/Roboto-Regular.ttf", 32)
+        font = ImageFont.truetype("assets/PressStart2P-Regular.ttf", 14)
     except IOError:
         print("Warning: Font not found, using default.")
         font = ImageFont.load_default()
@@ -57,11 +64,19 @@ async def generate_room_image(user_statuses):
                 emoji_id = match.group(2)
                 # For animated emojis, we'll download the static png version
                 url = f"https://cdn.discordapp.com/emojis/{emoji_id}.png"
+                tasks.append(fetch_image(session, url))
             else:
-                hex_code = get_unicode_hex(emj)
-                url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{hex_code}.png"
+                hex_list = get_unicode_hex(emj)
                 
-            tasks.append(fetch_image(session, url))
+                async def fetch_twemoji_with_fallback(session, hexes):
+                    for h in hexes:
+                        url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{h}.png"
+                        img_data = await fetch_image(session, url)
+                        if img_data:
+                            return img_data
+                    return None
+                
+                tasks.append(fetch_twemoji_with_fallback(session, hex_list))
             
         emoji_images_data = await asyncio.gather(*tasks)
         
@@ -99,44 +114,44 @@ async def generate_room_image(user_statuses):
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
             
-            padding = 20
+            padding = 15
             bubble_w = text_w + padding * 2
             bubble_h = text_h + padding * 2
             
             # Position bubble above emoji
             bubble_x = x + 36 - bubble_w // 2
-            bubble_y = y - bubble_h - 25
+            bubble_y = y - bubble_h - 20
             
             # Keep bubble within bounds
             if bubble_x < 20: bubble_x = 20
             if bubble_x + bubble_w > width - 20: bubble_x = width - bubble_w - 20
-            if bubble_y < 20: bubble_y = y + 72 + 25  # Draw below if not enough space
+            if bubble_y < 20: bubble_y = y + 72 + 20  # Draw below if not enough space
             
-            cx = bubble_x + bubble_w / 2
-            cy = bubble_y + bubble_h / 2
+            border_w = 3
+            draw.rectangle([bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h], fill=(255, 255, 255, 255), outline=(0, 0, 0, 255), width=border_w)
             
-            # Draw cloud puffs around the text bounds
-            num_puffs = max(6, int((bubble_w + bubble_h) / 25))
-            for j in range(num_puffs):
-                angle = j * (2 * math.pi / num_puffs)
-                # varying puff radius
-                radius = 15 + 10 * abs(math.sin(angle * 2.5))
-                # offset from center
-                px = cx + (bubble_w / 2 - padding / 2) * math.cos(angle)
-                py = cy + (bubble_h / 2 - padding / 2) * math.sin(angle)
-                
-                draw.ellipse([px - radius, py - radius, px + radius, py + radius], fill=(255, 255, 255, 240))
-                
-            # Fill the center body
-            draw.ellipse([bubble_x, bubble_y, bubble_x + bubble_w, bubble_y + bubble_h], fill=(255, 255, 255, 240))
+            tail_x = x + 36
+            tail_w = 16
+            tail_h = 16
             
-            # Draw trail of decreasing circles to the emoji (thought/cloud bubble style)
-            if bubble_y < y: # Cloud is above emoji
-                draw.ellipse([x + 36 - 8, bubble_y + bubble_h, x + 36 + 8, bubble_y + bubble_h + 16], fill=(255, 255, 255, 240))
-                draw.ellipse([x + 36 - 4, bubble_y + bubble_h + 20, x + 36 + 4, bubble_y + bubble_h + 28], fill=(255, 255, 255, 240))
+            if bubble_y < y: # Bubble is above emoji
+                pts_black = [(tail_x - tail_w/2 - border_w, bubble_y + bubble_h),
+                             (tail_x, bubble_y + bubble_h + tail_h + border_w),
+                             (tail_x + tail_w/2 + border_w, bubble_y + bubble_h)]
+                pts_white = [(tail_x - tail_w/2, bubble_y + bubble_h - border_w - 1),
+                             (tail_x, bubble_y + bubble_h + tail_h),
+                             (tail_x + tail_w/2, bubble_y + bubble_h - border_w - 1)]
+                draw.polygon(pts_black, fill=(0, 0, 0, 255))
+                draw.polygon(pts_white, fill=(255, 255, 255, 255))
             else: # Below
-                draw.ellipse([x + 36 - 8, bubble_y - 16, x + 36 + 8, bubble_y], fill=(255, 255, 255, 240))
-                draw.ellipse([x + 36 - 4, bubble_y - 28, x + 36 + 4, bubble_y - 20], fill=(255, 255, 255, 240))
+                pts_black = [(tail_x - tail_w/2 - border_w, bubble_y),
+                             (tail_x, bubble_y - tail_h - border_w),
+                             (tail_x + tail_w/2 + border_w, bubble_y)]
+                pts_white = [(tail_x - tail_w/2, bubble_y + border_w + 1),
+                             (tail_x, bubble_y - tail_h),
+                             (tail_x + tail_w/2, bubble_y + border_w + 1)]
+                draw.polygon(pts_black, fill=(0, 0, 0, 255))
+                draw.polygon(pts_white, fill=(255, 255, 255, 255))
             
             # Draw text
             draw.text((bubble_x + padding, bubble_y + padding), txt, fill=(0, 0, 0, 255), font=font)
