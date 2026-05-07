@@ -3,7 +3,11 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import discord
 
 # Import the commands from the bot module.
-from bot import set_status, clear_status, status, toggle_status, whoami, whois
+from bot import set_status, clear_status, status, toggle_status, whoami, whois, active_status_messages
+
+@pytest.fixture(autouse=True)
+def clear_active_status_messages():
+    active_status_messages.clear()
 
 @pytest.fixture
 def mock_interaction():
@@ -19,6 +23,8 @@ def mock_interaction():
     interaction.followup = AsyncMock()
     interaction.followup.send = AsyncMock()
     interaction.original_response = AsyncMock()
+    interaction.channel = MagicMock()
+    interaction.channel.fetch_message = AsyncMock()
     return interaction
 
 @pytest.mark.asyncio
@@ -194,6 +200,7 @@ async def test_toggle_status_disable(mock_db, mock_interaction):
     mock_channel = AsyncMock(spec=discord.VoiceChannel)
     mock_channel.id = 999
     mock_channel.name = "Test Channel"
+    mock_channel.members = []
     mock_interaction.user.guild_permissions.manage_channels = True
     
     await toggle_status.callback(mock_interaction, mock_channel)

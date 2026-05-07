@@ -36,15 +36,16 @@ def get_unicode_hex(char):
     # Return unique variants (try raw first, then stripped, then appended)
     return list(dict.fromkeys([h_raw, h_stripped, h_appended]))
 
-async def generate_room_image(user_statuses):
+async def generate_room_image(user_statuses, background_name="default"):
     """
     user_statuses: list of tuples (user_id, emoji_str, text_str)
     """
     # Load background
+    bg_path = "assets/background.png" if background_name == "default" else f"assets/background_{background_name}.png"
     try:
-        bg = Image.open("assets/background.png").convert("RGBA")
+        bg = Image.open(bg_path).convert("RGBA")
     except FileNotFoundError:
-        print("Warning: Background not found, using white image.")
+        print(f"Warning: Background {bg_path} not found, using white image.")
         bg = Image.new("RGBA", (1024, 1024), (255, 255, 255, 255))
         
     width, height = bg.size

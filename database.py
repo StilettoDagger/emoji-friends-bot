@@ -18,6 +18,10 @@ def init_db():
     columns = [column[1] for column in cursor.fetchall()]
     if 'text' not in columns:
         cursor.execute("ALTER TABLE user_emojis ADD COLUMN text TEXT")
+        
+    # Migration: Add 'preferred_theme' column if it doesn't exist
+    if 'preferred_theme' not in columns:
+        cursor.execute("ALTER TABLE user_emojis ADD COLUMN preferred_theme TEXT DEFAULT 'default'")
     
     # VC settings table
     cursor.execute('''
@@ -36,7 +40,13 @@ def set_user_status(user_id, emoji, text):
     if emoji is None:
         cursor.execute('DELETE FROM user_emojis WHERE user_id = ?', (user_id,))
     else:
-        cursor.execute('INSERT OR REPLACE INTO user_emojis (user_id, emoji, text) VALUES (?, ?, ?)', (user_id, emoji, text))
+        cursor.execute('''
+            INSERT INTO user_emojis (user_id, emoji, text) 
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                emoji=excluded.emoji,
+                text=excluded.text
+        ''', (user_id, emoji, text))
     conn.commit()
     conn.close()
 
@@ -47,6 +57,26 @@ def get_user_status(user_id):
     row = cursor.fetchone()
     conn.close()
     return row if row else (None, None)
+
+def set_user_theme(user_id, theme_name):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO user_emojis (user_id, emoji, text, preferred_theme) 
+        VALUES (?, '❓', NULL, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            preferred_theme=excluded.preferred_theme
+    ''', (user_id, theme_name))
+    conn.commit()
+    conn.close()
+
+def get_user_theme(user_id):
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT preferred_theme FROM user_emojis WHERE user_id = ?', (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row and row[0] else 'default'
 
 def get_all_user_ids():
     conn = sqlite3.connect('database.db')

@@ -32,15 +32,8 @@ class EmojiBot(commands.Bot):
 
     @tasks.loop(seconds=10)
     async def status_update_loop(self):
-        for channel_id in list(active_status_messages.keys()):
-            channel = self.get_channel(channel_id)
-            if channel:
-                await update_status_message(channel)
-            else:
-                try:
-                    del active_status_messages[channel_id]
-                except KeyError:
-                    pass
+        for msg_id in list(active_status_messages.keys()):
+            await update_specific_status_message(msg_id)
 
     @status_update_loop.before_loop
     async def before_status_update_loop(self):
@@ -48,7 +41,44 @@ class EmojiBot(commands.Bot):
 
 bot = EmojiBot()
 
+# Dict structure: {message_id: {'message': message_obj, 'channel': channel_obj, 'theme': 'default', 'author_id': user_id}}
 active_status_messages = {}
+
+class EnvironmentView(discord.ui.View):
+    def __init__(self, author_id):
+        super().__init__(timeout=None)
+        self.author_id = author_id
+
+    async def handle_theme_change(self, interaction: discord.Interaction, theme: str):
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("Only the person who generated this status can change its theme. Run `/status` to create your own view!", ephemeral=True)
+            return
+            
+        database.set_user_theme(self.author_id, theme)
+        
+        msg_id = interaction.message.id
+        if msg_id in active_status_messages:
+            active_status_messages[msg_id]['theme'] = theme
+            await interaction.response.defer()
+            await update_specific_status_message(msg_id)
+        else:
+            await interaction.response.send_message("This status message is no longer active. Run `/status` again.", ephemeral=True)
+
+    @discord.ui.button(label="Default", style=discord.ButtonStyle.secondary)
+    async def btn_default(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_theme_change(interaction, "default")
+
+    @discord.ui.button(label="Cafe", style=discord.ButtonStyle.primary)
+    async def btn_cafe(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_theme_change(interaction, "cafe")
+
+    @discord.ui.button(label="Office", style=discord.ButtonStyle.primary)
+    async def btn_office(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_theme_change(interaction, "office")
+
+    @discord.ui.button(label="Park", style=discord.ButtonStyle.success)
+    async def btn_park(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.handle_theme_change(interaction, "park")
 
 # Custom Discord emoji regex: <:name:id> or <a:name:id>
 CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:\w+:\d+>$")
@@ -117,7 +147,10 @@ async def toggle_status(interaction: discord.Interaction, channel: discord.Voice
     # If disabling, clear the status
     if not is_enabled:
         await target_channel.edit(status=None)
-        await update_status_message(target_channel)
+        # Update all messages for this channel
+        for msg_id, data in list(active_status_messages.items()):
+            if data['channel'].id == target_channel.id:
+                await update_specific_status_message(msg_id)
     else:
         # If enabling, immediately update it
         await update_vc_status(target_channel)
@@ -134,6 +167,8 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
     await interaction.response.defer(ephemeral=False)
 
     embed = generate_status_embed(target_channel)
+    user_theme = database.get_user_theme(interaction.user.id)
+    view = EnvironmentView(interaction.user.id)
     
     user_statuses = []
     for member in target_channel.members:
@@ -142,21 +177,27 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
             user_statuses.append((member.id, emoji_char, text))
             
     if user_statuses:
-        image_io = await image_renderer.generate_room_image(user_statuses)
+        image_io = await image_renderer.generate_room_image(user_statuses, background_name=user_theme)
         filename = f"room_{uuid.uuid4().hex[:8]}.png"
         file = discord.File(fp=image_io, filename=filename)
         embed.set_image(url=f"attachment://{filename}")
-        await interaction.followup.send(embed=embed, file=file)
+        await interaction.followup.send(embed=embed, file=file, view=view)
     else:
-        await interaction.followup.send(embed=embed)
+        await interaction.followup.send(embed=embed, view=view)
     
     # Track this message for auto-updates
     interaction_message = await interaction.original_response()
     try:
         message = await interaction.channel.fetch_message(interaction_message.id)
-        active_status_messages[target_channel.id] = message
     except discord.HTTPException:
-        active_status_messages[target_channel.id] = interaction_message
+        message = interaction_message
+        
+    active_status_messages[message.id] = {
+        'message': message,
+        'channel': target_channel,
+        'theme': user_theme,
+        'author_id': interaction.user.id
+    }
 
 @bot.tree.command(name="whoami", description="Get your current assigned status")
 async def whoami(interaction: discord.Interaction):
@@ -246,34 +287,42 @@ def generate_status_embed(channel: discord.VoiceChannel) -> discord.Embed:
 
     return embed
 
-async def update_status_message(channel: discord.VoiceChannel):
-    if channel.id in active_status_messages:
-        try:
-            message = active_status_messages[channel.id]
-            embed = generate_status_embed(channel)
-            
-            user_statuses = []
-            for member in channel.members:
-                emoji_char, text = database.get_user_status(member.id)
-                if emoji_char:
-                    user_statuses.append((member.id, emoji_char, text))
-                    
-            if user_statuses:
-                image_io = await image_renderer.generate_room_image(user_statuses)
-                filename = f"room_{uuid.uuid4().hex[:8]}.png"
-                file = discord.File(fp=image_io, filename=filename)
-                embed.set_image(url=f"attachment://{filename}")
-                await message.edit(embed=embed, attachments=[file])
-            else:
-                await message.edit(embed=embed, attachments=[])
-        except discord.NotFound:
-            del active_status_messages[channel.id]
-        except discord.HTTPException as e:
-            print(f"Failed to update status message for {channel.name}: {e}")
+async def update_specific_status_message(msg_id):
+    if msg_id not in active_status_messages:
+        return
+        
+    data = active_status_messages[msg_id]
+    message = data['message']
+    channel = data['channel']
+    theme = data['theme']
+    
+    try:
+        embed = generate_status_embed(channel)
+        
+        user_statuses = []
+        for member in channel.members:
+            emoji_char, text = database.get_user_status(member.id)
+            if emoji_char:
+                user_statuses.append((member.id, emoji_char, text))
+                
+        if user_statuses:
+            image_io = await image_renderer.generate_room_image(user_statuses, background_name=theme)
+            filename = f"room_{uuid.uuid4().hex[:8]}.png"
+            file = discord.File(fp=image_io, filename=filename)
+            embed.set_image(url=f"attachment://{filename}")
+            await message.edit(embed=embed, attachments=[file])
+        else:
+            await message.edit(embed=embed, attachments=[])
+    except discord.NotFound:
+        del active_status_messages[msg_id]
+    except discord.HTTPException as e:
+        print(f"Failed to update status message {msg_id}: {e}")
 
 async def update_vc_status(channel):
-    # Update the active embed if one exists
-    await update_status_message(channel)
+    # Update all active embeds for this channel
+    for msg_id, data in list(active_status_messages.items()):
+        if data['channel'].id == channel.id:
+            await update_specific_status_message(msg_id)
 
     if not database.is_vc_enabled(channel.id):
         return
