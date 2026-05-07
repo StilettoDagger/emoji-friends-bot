@@ -135,6 +135,29 @@ async def clear_status(interaction: discord.Interaction):
     if interaction.user.voice and interaction.user.voice.channel:
         await update_vc_status(interaction.user.voice.channel)
 
+@bot.tree.command(name="set_user_status", description="Assign an emoji and text to another user's VC status")
+@app_commands.describe(target_user="The user to update", emoji_input="The single emoji to display (Unicode or Custom)", text_input="The text to display next to the emoji")
+@app_commands.default_permissions(manage_channels=True)
+async def set_user_status_cmd(interaction: discord.Interaction, target_user: discord.Member, emoji_input: str, text_input: str = None):
+    emoji_input = emoji_input.strip()
+    if text_input:
+        text_input = text_input.strip()
+    
+    if not is_single_emoji(emoji_input):
+        await interaction.response.send_message("Please provide exactly **one** valid emoji (Unicode or Custom).", ephemeral=True)
+        return
+
+    database.set_user_status(target_user.id, emoji_input, text_input)
+    
+    status_msg = f"Status for {target_user.display_name} has been set to: {emoji_input}"
+    if text_input:
+        status_msg += f" {text_input}"
+    await interaction.response.send_message(status_msg, ephemeral=True)
+
+    # If the target user is currently in a voice channel, update that channel's status immediately
+    if target_user.voice and target_user.voice.channel:
+        await update_vc_status(target_user.voice.channel)
+
 @bot.tree.command(name="toggle_status", description="Toggle dynamic emoji status for a Voice Channel")
 @app_commands.describe(channel="The voice channel to toggle (defaults to your current channel)")
 async def toggle_status(interaction: discord.Interaction, channel: discord.VoiceChannel = None):
@@ -261,14 +284,15 @@ async def help_command(interaction: discord.Interaction):
         "**Bot Commands:**\n"
         "1. `/set_status <emoji> [text]` - Set an emoji and optional text to display in your VC status.\n" \
         "2. `/clear_status` - Remove your assigned status.\n" \
-        "3. `/toggle_status [channel]` - Toggle dynamic status for a voice channel (defaults to your current channel).\n"
-        "4. `/status [channel]` - Get the tracking status and a list of users in a voice channel.\n"
-        "5. `/whoami` - Get your current assigned status.\n"
-        "6. `/top_emojis` - Show the most popular emojis assigned by users.\n"
-        "7. `/whois` - List all users with assigned statuses.\n"
-        "8. `/help` - Display this help message.\n\n"
+        "3. `/set_user_status <user> <emoji> [text]` - (Admin) Set an emoji and text for another user's status.\n" \
+        "4. `/toggle_status [channel]` - Toggle dynamic status for a voice channel (defaults to your current channel).\n"
+        "5. `/status [channel]` - Get the tracking status and a list of users in a voice channel.\n"
+        "6. `/whoami` - Get your current assigned status.\n"
+        "7. `/top_emojis` - Show the most popular emojis assigned by users.\n"
+        "8. `/whois` - List all users with assigned statuses.\n"
+        "9. `/help` - Display this help message.\n\n"
         "**Notes:**\n"
-        "- You must have 'Manage Channels' permissions to toggle status tracking for a channel.\n"
+        "- You must have 'Manage Channels' permissions to toggle status tracking for a channel or set another user's status.\n"
         "- The bot will automatically update the VC status when users join or leave, as long as it's enabled for that channel."
     )
     await interaction.response.send_message(help_text, ephemeral=True)
