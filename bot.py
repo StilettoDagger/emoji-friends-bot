@@ -44,10 +44,37 @@ bot = EmojiBot()
 # Dict structure: {message_id: {'message': message_obj, 'channel': channel_obj, 'theme': 'default', 'author_id': user_id}}
 active_status_messages = {}
 
+class ThemeButton(discord.ui.Button):
+    def __init__(self, theme_id, label, emoji, is_active):
+        style = discord.ButtonStyle.success if is_active else discord.ButtonStyle.secondary
+        super().__init__(label=label, emoji=emoji, style=style, disabled=is_active, custom_id=f"theme_{theme_id}")
+        self.theme_id = theme_id
+
+    async def callback(self, interaction: discord.Interaction):
+        await self.view.handle_theme_change(interaction, self.theme_id)
+
 class EnvironmentView(discord.ui.View):
-    def __init__(self, author_id):
+    def __init__(self, author_id, current_theme):
         super().__init__(timeout=None)
         self.author_id = author_id
+        
+        themes = {
+            "default": {"label": "Home", "emoji": "🏠"},
+            "cafe": {"label": "Cozy Cafe", "emoji": "☕"},
+            "office": {"label": "Modern Office", "emoji": "🖥️"},
+            "park": {"label": "Park Outdoors", "emoji": "🌳"}
+        }
+
+        # Add a non-interactive button to act as a label
+        lbl_btn = discord.ui.Button(label="🎨 Choose a theme:", style=discord.ButtonStyle.secondary, custom_id="theme_label", disabled=True)
+        async def lbl_callback(interaction: discord.Interaction):
+            await interaction.response.defer()
+        lbl_btn.callback = lbl_callback
+        self.add_item(lbl_btn)
+
+        for theme_id, data in themes.items():
+            is_active = (theme_id == current_theme)
+            self.add_item(ThemeButton(theme_id, data["label"], data["emoji"], is_active))
 
     async def handle_theme_change(self, interaction: discord.Interaction, theme: str):
         if interaction.user.id != self.author_id:
@@ -63,22 +90,6 @@ class EnvironmentView(discord.ui.View):
             await update_specific_status_message(msg_id)
         else:
             await interaction.response.send_message("This status message is no longer active. Run `/status` again.", ephemeral=True)
-
-    @discord.ui.button(label="Default", style=discord.ButtonStyle.secondary)
-    async def btn_default(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.handle_theme_change(interaction, "default")
-
-    @discord.ui.button(label="Cafe", style=discord.ButtonStyle.primary)
-    async def btn_cafe(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.handle_theme_change(interaction, "cafe")
-
-    @discord.ui.button(label="Office", style=discord.ButtonStyle.primary)
-    async def btn_office(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.handle_theme_change(interaction, "office")
-
-    @discord.ui.button(label="Park", style=discord.ButtonStyle.success)
-    async def btn_park(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.handle_theme_change(interaction, "park")
 
 # Custom Discord emoji regex: <:name:id> or <a:name:id>
 CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:\w+:\d+>$")
@@ -168,7 +179,7 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
 
     embed = generate_status_embed(target_channel)
     user_theme = database.get_user_theme(interaction.user.id)
-    view = EnvironmentView(interaction.user.id)
+    view = EnvironmentView(interaction.user.id, user_theme)
     
     user_statuses = []
     for member in target_channel.members:
@@ -299,6 +310,9 @@ async def update_specific_status_message(msg_id):
     try:
         embed = generate_status_embed(channel)
         
+        author_id = data['author_id']
+        view = EnvironmentView(author_id, theme)
+        
         user_statuses = []
         for member in channel.members:
             emoji_char, text = database.get_user_status(member.id)
@@ -310,9 +324,9 @@ async def update_specific_status_message(msg_id):
             filename = f"room_{uuid.uuid4().hex[:8]}.png"
             file = discord.File(fp=image_io, filename=filename)
             embed.set_image(url=f"attachment://{filename}")
-            await message.edit(embed=embed, attachments=[file])
+            await message.edit(embed=embed, attachments=[file], view=view)
         else:
-            await message.edit(embed=embed, attachments=[])
+            await message.edit(embed=embed, attachments=[], view=view)
     except discord.NotFound:
         del active_status_messages[msg_id]
     except discord.HTTPException as e:
