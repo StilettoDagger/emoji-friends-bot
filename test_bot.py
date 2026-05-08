@@ -77,8 +77,8 @@ async def test_status_current_channel(mock_db, mock_interaction):
     mock_channel = MagicMock(spec=discord.VoiceChannel)
     mock_channel.name = "General"
     mock_channel.id = 999
-    member1 = MagicMock(); member1.id = 1; member1.display_name = "User1"
-    member2 = MagicMock(); member2.id = 2; member2.display_name = "User2"
+    member1 = MagicMock(); member1.id = 1; member1.display_name = "User1"; member1.name = "User1"
+    member2 = MagicMock(); member2.id = 2; member2.display_name = "User2"; member2.name = "User2"
     mock_channel.members = [member1, member2]
     
     mock_interaction.user.voice = MagicMock()

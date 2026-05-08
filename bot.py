@@ -217,7 +217,7 @@ async def status(interaction: discord.Interaction, channel: discord.VoiceChannel
     view = EnvironmentView(interaction.user.id, user_theme)
     
     user_statuses = []
-    for member in target_channel.members:
+    for member in sorted(target_channel.members, key=lambda m: m.name.lower()):
         emoji_char, text = database.get_user_status(member.id)
         if emoji_char:
             user_statuses.append((member.id, emoji_char, text))
@@ -315,7 +315,7 @@ def generate_status_embed(channel: discord.VoiceChannel) -> discord.Embed:
     enabled_str = "🟢 **Enabled**" if is_enabled else "🔴 **Disabled**"
 
     users_info = []
-    for member in channel.members:
+    for member in sorted(channel.members, key=lambda m: m.name.lower()):
         emoji, text = database.get_user_status(member.id)
         if emoji and text:
             status_str = f"{emoji} *{text}*"
@@ -351,7 +351,7 @@ async def update_specific_status_message(msg_id):
         view = EnvironmentView(author_id, theme)
         
         user_statuses = []
-        for member in channel.members:
+        for member in sorted(channel.members, key=lambda m: m.name.lower()):
             emoji_char, text = database.get_user_status(member.id)
             if emoji_char:
                 user_statuses.append((member.id, emoji_char, text))
@@ -379,7 +379,7 @@ async def update_vc_status(channel):
         return
 
     emojis = []
-    for member in channel.members:
+    for member in sorted(channel.members, key=lambda m: m.name.lower()):
         emoji, _ = database.get_user_status(member.id)
         if emoji:
             emoji_item = f"{emoji}"
