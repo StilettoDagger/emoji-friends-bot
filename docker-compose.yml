@@ -9,4 +9,4 @@ services:
       - .env
     volumes:
       # Persist the database file on the host
-      - ./database.db:/app/database.db
+      - ./data:/app/data

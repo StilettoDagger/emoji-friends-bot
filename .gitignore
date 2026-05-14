@@ -1,4 +1,4 @@
 .env
-database.db
+data/database.db
 __pycache__/
 *.pyc

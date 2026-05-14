@@ -1,7 +1,7 @@
 import sqlite3
 
 def init_db():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     
     # User emojis table
@@ -35,7 +35,7 @@ def init_db():
     conn.close()
 
 def set_user_status(user_id, emoji, text):
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     if emoji is None:
         cursor.execute('DELETE FROM user_emojis WHERE user_id = ?', (user_id,))
@@ -51,7 +51,7 @@ def set_user_status(user_id, emoji, text):
     conn.close()
 
 def get_user_status(user_id):
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT emoji, text FROM user_emojis WHERE user_id = ?', (user_id,))
     row = cursor.fetchone()
@@ -59,7 +59,7 @@ def get_user_status(user_id):
     return row if row else (None, None)
 
 def set_user_theme(user_id, theme_name):
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO user_emojis (user_id, emoji, text, preferred_theme) 
@@ -71,7 +71,7 @@ def set_user_theme(user_id, theme_name):
     conn.close()
 
 def get_user_theme(user_id):
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT preferred_theme FROM user_emojis WHERE user_id = ?', (user_id,))
     row = cursor.fetchone()
@@ -79,7 +79,7 @@ def get_user_theme(user_id):
     return row[0] if row and row[0] else 'default'
 
 def get_all_user_ids():
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT user_id FROM user_emojis')
     rows = cursor.fetchall()
@@ -87,7 +87,7 @@ def get_all_user_ids():
     return [row[0] for row in rows]
 
 def toggle_vc_status(channel_id):
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT enabled FROM vc_settings WHERE channel_id = ?', (channel_id,))
     row = cursor.fetchone()
@@ -100,7 +100,7 @@ def toggle_vc_status(channel_id):
     return bool(new_status)
 
 def is_vc_enabled(channel_id):
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('data/database.db')
     cursor = conn.cursor()
     cursor.execute('SELECT enabled FROM vc_settings WHERE channel_id = ?', (channel_id,))
     row = cursor.fetchone()
