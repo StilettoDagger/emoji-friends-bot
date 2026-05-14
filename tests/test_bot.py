@@ -2,10 +2,10 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import discord
 
-from cogs.status import StatusCog
-from cogs.admin import AdminCog
-from cogs.info import InfoCog
-from utils.state import active_status_messages
+from src.cogs.status import StatusCog
+from src.cogs.admin import AdminCog
+from src.cogs.info import InfoCog
+from src.utils.state import active_status_messages
 
 @pytest.fixture(autouse=True)
 def clear_active_status_messages():
@@ -42,7 +42,7 @@ def info_cog():
     return InfoCog(MagicMock())
 
 @pytest.mark.asyncio
-@patch('cogs.info.database')
+@patch('src.cogs.info.database')
 async def test_whoami_with_status(mock_db, info_cog, mock_interaction):
     mock_db.get_user_status.return_value = ('😀', 'Hello')
     await info_cog.whoami.callback(info_cog, mock_interaction)
@@ -53,7 +53,7 @@ async def test_whoami_with_status(mock_db, info_cog, mock_interaction):
     assert '😀' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.info.database')
+@patch('src.cogs.info.database')
 async def test_whoami_none(mock_db, info_cog, mock_interaction):
     mock_db.get_user_status.return_value = (None, None)
     await info_cog.whoami.callback(info_cog, mock_interaction)
@@ -62,7 +62,7 @@ async def test_whoami_none(mock_db, info_cog, mock_interaction):
     assert 'no assigned status' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.info.database')
+@patch('src.cogs.info.database')
 async def test_whois_list(mock_db, info_cog, mock_interaction):
     mock_db.get_all_user_ids.return_value = [123, 456]
     mock_db.get_user_status.side_effect = lambda uid: ('😀', 'Hello') if uid == 123 else ('😃', 'Hi')
@@ -76,7 +76,7 @@ async def test_whois_list(mock_db, info_cog, mock_interaction):
     assert '<@456>: 😃 *Hi*' in embed.description
 
 @pytest.mark.asyncio
-@patch('cogs.info.database')
+@patch('src.cogs.info.database')
 async def test_whois_empty(mock_db, info_cog, mock_interaction):
     mock_db.get_all_user_ids.return_value = []
     await info_cog.whois.callback(info_cog, mock_interaction)
@@ -85,9 +85,9 @@ async def test_whois_empty(mock_db, info_cog, mock_interaction):
     assert 'No users' in kwargs['embed'].description
 
 @pytest.mark.asyncio
-@patch('cogs.status.database')
-@patch('cogs.status.generate_status_embed')
-@patch('cogs.status.image_renderer', new_callable=AsyncMock)
+@patch('src.cogs.status.database')
+@patch('src.cogs.status.generate_status_embed')
+@patch('src.cogs.status.image_renderer', new_callable=AsyncMock)
 async def test_status_current_channel(mock_image_renderer, mock_generate_status_embed, mock_db, status_cog, mock_interaction):
     # Setup channel with members
     mock_channel = MagicMock(spec=discord.VoiceChannel)
@@ -115,8 +115,8 @@ async def test_status_current_channel(mock_image_renderer, mock_generate_status_
     assert 'embed' in kwargs
 
 @pytest.mark.asyncio
-@patch('cogs.status.database')
-@patch('cogs.status.update_vc_status', new_callable=AsyncMock)
+@patch('src.cogs.status.database')
+@patch('src.cogs.status.update_vc_status', new_callable=AsyncMock)
 async def test_set_status_valid(mock_update_vc_status, mock_db, status_cog, mock_interaction):
     # Setup voice state for update_vc_status to trigger
     mock_interaction.user.voice = MagicMock()
@@ -134,7 +134,7 @@ async def test_set_status_valid(mock_update_vc_status, mock_db, status_cog, mock
     assert '😀 Testing' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.status.database')
+@patch('src.cogs.status.database')
 async def test_set_status_invalid(mock_db, status_cog, mock_interaction):
     await status_cog.set_status.callback(status_cog, mock_interaction, '😀😃', 'Testing')
     
@@ -145,8 +145,8 @@ async def test_set_status_invalid(mock_db, status_cog, mock_interaction):
     assert 'exactly **one** valid emoji' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.status.database')
-@patch('cogs.status.update_vc_status', new_callable=AsyncMock)
+@patch('src.cogs.status.database')
+@patch('src.cogs.status.update_vc_status', new_callable=AsyncMock)
 async def test_clear_status(mock_update_vc_status, mock_db, status_cog, mock_interaction):
     # Setup voice state
     mock_interaction.user.voice = MagicMock()
@@ -161,7 +161,7 @@ async def test_clear_status(mock_update_vc_status, mock_db, status_cog, mock_int
     assert 'removed' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.status.database')
+@patch('src.cogs.status.database')
 async def test_status_no_channel(mock_db, status_cog, mock_interaction):
     # No channel provided, and user not in a voice channel
     mock_interaction.user.voice = None
@@ -173,8 +173,8 @@ async def test_status_no_channel(mock_db, status_cog, mock_interaction):
     assert 'specify a channel or join one' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.admin.database')
-@patch('cogs.admin.update_vc_status', new_callable=AsyncMock)
+@patch('src.cogs.admin.database')
+@patch('src.cogs.admin.update_vc_status', new_callable=AsyncMock)
 async def test_toggle_status_enable(mock_update_vc_status, mock_db, admin_cog, mock_interaction):
     mock_db.toggle_vc_status.return_value = True # Becomes enabled
     
@@ -192,7 +192,7 @@ async def test_toggle_status_enable(mock_update_vc_status, mock_db, admin_cog, m
     assert '**enabled**' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.admin.database')
+@patch('src.cogs.admin.database')
 async def test_toggle_status_disable(mock_db, admin_cog, mock_interaction):
     mock_db.toggle_vc_status.return_value = False # Becomes disabled
     
@@ -211,7 +211,7 @@ async def test_toggle_status_disable(mock_db, admin_cog, mock_interaction):
     assert '**disabled**' in args[0]
 
 @pytest.mark.asyncio
-@patch('cogs.admin.database')
+@patch('src.cogs.admin.database')
 async def test_toggle_status_no_permissions(mock_db, admin_cog, mock_interaction):
     mock_channel = AsyncMock(spec=discord.VoiceChannel)
     mock_interaction.user.guild_permissions.manage_channels = False

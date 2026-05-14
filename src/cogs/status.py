@@ -3,11 +3,11 @@ from discord import app_commands
 from discord.ext import commands
 import uuid
 
-import database
-import image_renderer
-from utils.helpers import is_single_emoji, generate_status_embed, update_vc_status
-from utils.state import active_status_messages
-from ui.environment_view import EnvironmentView
+from src.utils import database
+from src.utils import image_renderer
+from src.utils.helpers import is_single_emoji, generate_status_embed, update_vc_status
+from src.utils.state import active_status_messages
+from src.ui.environment_view import EnvironmentView
 
 class StatusCog(commands.Cog):
     def __init__(self, bot):

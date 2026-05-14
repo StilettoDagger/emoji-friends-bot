@@ -2,9 +2,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-import database
-from utils.helpers import is_single_emoji, update_vc_status, update_specific_status_message
-from utils.state import active_status_messages
+from src.utils import database
+from src.utils.helpers import is_single_emoji, update_vc_status, update_specific_status_message
+from src.utils.state import active_status_messages
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):

@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
-import database
+from src.utils import database
 
 # Load environment variables
 load_dotenv()
@@ -22,10 +22,10 @@ class EmojiBot(commands.Bot):
         
         # Load cogs
         cogs = [
-            'cogs.status',
-            'cogs.admin',
-            'cogs.info',
-            'cogs.voice'
+            'src.cogs.status',
+            'src.cogs.admin',
+            'src.cogs.info',
+            'src.cogs.voice'
         ]
         for cog in cogs:
             await self.load_extension(cog)

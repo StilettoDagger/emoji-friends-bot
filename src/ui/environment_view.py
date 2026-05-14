@@ -1,6 +1,6 @@
 import discord
-import database
-from utils.state import active_status_messages
+from src.utils import database
+from src.utils.state import active_status_messages
 
 class ThemeButton(discord.ui.Button):
     def __init__(self, theme_id, label, emoji, is_active):
@@ -46,7 +46,7 @@ class EnvironmentView(discord.ui.View):
             active_status_messages[msg_id]['theme'] = theme
             await interaction.response.defer()
             # Late import to avoid circular dependency
-            from utils.helpers import update_specific_status_message
+            from src.utils.helpers import update_specific_status_message
             await update_specific_status_message(msg_id)
         else:
             await interaction.response.send_message("This status message is no longer active. Run `/status` again.", ephemeral=True)

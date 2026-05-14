@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands, tasks
-from utils.state import active_status_messages
-from utils.helpers import update_specific_status_message, update_vc_status
+from src.utils.state import active_status_messages
+from src.utils.helpers import update_specific_status_message, update_vc_status
 
 class VoiceCog(commands.Cog):
     def __init__(self, bot):

@@ -1,7 +1,7 @@
 import re
 import emoji
 import discord
-import database
+from src.utils import database
 
 # Custom Discord emoji regex: <:name:id> or <a:name:id>
 CUSTOM_EMOJI_REGEX = re.compile(r"^<a?:\w+:\d+>$")
@@ -40,8 +40,8 @@ def generate_status_embed(channel: discord.VoiceChannel) -> discord.Embed:
 
     return embed
 import uuid
-import image_renderer
-from utils.state import active_status_messages
+from src.utils import image_renderer
+from src.utils.state import active_status_messages
 
 async def update_specific_status_message(msg_id):
     if msg_id not in active_status_messages:
@@ -53,7 +53,7 @@ async def update_specific_status_message(msg_id):
     theme = data['theme']
     
     try:
-        from ui.environment_view import EnvironmentView
+        from src.ui.environment_view import EnvironmentView
         embed = generate_status_embed(channel)
         
         author_id = data['author_id']
