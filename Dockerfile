@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Command to run the bot
-CMD ["python", "bot.py"]
+CMD ["python", "emoji_friends_bot.py"]
